@@ -79,6 +79,7 @@ def count_relationships(parent_child_dict, node_counts):
               for j in parent_child_dict[node]:
                     queue.append([j, level+1])
 
+    # смотрим сколько на уровне узлов
     for i in graph_level.keys():
          if len(graph_level[i]) > 1:
               for j in graph_level[i]:
