@@ -59,11 +59,9 @@ def count_relationships(parent_child_dict, node_counts):
                               queue.append(parent) 
 
     # отношение r5
-    print(list(parent_child_dict.values()))
     root = set(parent_child_dict.keys()) - set(list(chain.from_iterable(parent_child_dict.values())))  #ищем корень
     root = list(root)
     root = root[0]
-    print(root) 
 
     #находим на каких уровнях находтся узлы      
     graph_level = {}
