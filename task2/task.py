@@ -95,7 +95,7 @@ def get_key_by_value(d, value):
             return key
     return None  # Если значение не найдено 
 
-def main(input_string):
+def main(input_string:str) -> str:
     result, node_counts = parse_parent_child_string(input_string)
     print("Результат:", result)
     relation_table = count_relationships(result, node_counts)
