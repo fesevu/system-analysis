@@ -1,4 +1,5 @@
 import json
+import sys
 
 def parse_ranking(ranking):
     """
@@ -40,14 +41,13 @@ def main(ranking1_json, ranking2_json):
     Основная функция, которая находит ядро противоречий для двух ранжировок
     """
     ranking1 = json.loads(ranking1_json)
-    print(ranking1)
     ranking2 = json.loads(ranking2_json)
     
     # Преобразование ранжировок в матрицы
     matrix1 = parse_ranking(ranking1)
-    print(matrix1)
+    print("Ранжировка1:", matrix1)
     matrix2 = parse_ranking(ranking2)
-    print(matrix2)
+    print("Ранжировка2:", matrix2)
     
     # Поиск противоречий
     discrepancies = find_discrepancies(matrix1, matrix2)
@@ -58,9 +58,16 @@ def main(ranking1_json, ranking2_json):
 
 # Пример вызова функции
 if __name__ == "__main__":
-    with open('./task4/data/A.json', 'r') as f1, open('./task4/data/B.json', 'r') as f2:
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <path_to_first_json> <path_to_second_json>")
+        sys.exit(1)
+
+    file1_path = sys.argv[1]
+    file2_path = sys.argv[2]
+
+    with open(file1_path, 'r') as f1, open(file2_path, 'r') as f2:
         ranking1_json = f1.read()
         ranking2_json = f2.read()
     
     result = main(ranking1_json, ranking2_json)
-    print(result)
+    print("Противоречия:", result)
