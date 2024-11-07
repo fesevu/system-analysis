@@ -38,7 +38,7 @@ def main():
     Ha_B = conditional_entropy
 
     # I(A,B) - взаимная информация между событиями A и B
-    I_AB = H_B - H_AB
+    I_AB = H_B - Ha_B
 
     # Возвращаем результаты с точностью до двух знаков
     return [round(H_AB, 2), round(H_A, 2), round(H_B, 2), round(Ha_B, 2), round(I_AB, 2)]
