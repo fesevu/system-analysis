@@ -6,7 +6,7 @@ def main():
     # Загружаем данные из CSV файла
     data = pd.read_csv(
         'D:/Lab_sem_7/system analysis/task4/data/условная-энтропия-данные.csv')
-
+       
     # Рассчитываем совместные вероятности
     total_sum = data.iloc[:, 1:].values.sum()
     joint_prob = data.iloc[:, 1:] / total_sum
@@ -38,7 +38,7 @@ def main():
     Ha_B = conditional_entropy
 
     # I(A,B) - взаимная информация между событиями A и B
-    I_AB = H_A + H_B - H_AB
+    I_AB = H_B - H_AB
 
     # Возвращаем результаты с точностью до двух знаков
     return [round(H_AB, 2), round(H_A, 2), round(H_B, 2), round(Ha_B, 2), round(I_AB, 2)]
