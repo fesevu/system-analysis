@@ -1,113 +1,88 @@
-import sys
-from itertools import chain
+from collections import defaultdict
+import csv
 
-def parse_parent_child_string(input_string):
-    # Разделяем входную строку по символу переноса строки
-    pairs = input_string.strip().split('/n')
-    
-    # Инициализируем хеш-таблицу (словарь)
-    parent_child_dict = {}
-    
-    #ищем количество узлов - самый большой номер
-    maximum = -1
-    # Проходим по всем парам родитель-ребёнок
-    for pair in pairs:
-        # Разделяем каждую пару по запятой
-        parent, child = pair.split(',')
-        parent = int(parent.strip())  # Приводим родителя к типу int
-        child = int(child.strip())      # Приводим ребёнка к типу int
-        maximum = max(maximum, parent, child) #ищем максимальное число
-        
-        # Добавляем ребёнка в список детей родителя
-        if parent in parent_child_dict:
-            parent_child_dict[parent].append(child)
-        else:
-            parent_child_dict[parent] = [child]
-    
-    return parent_child_dict, maximum
 
-#считаем количество отношений
-def count_relationships(parent_child_dict, node_counts):
-    relation_table = [[0 for _ in range(5)] for _ in range(node_counts)] #создаём таблицу отношений
+def process_hierarchy(input_data: str) -> str:
+    """
+    Обрабатывает входные данные о родительских и дочерних узлах дерева, рассчитывая различные метрики.
+    :param input_data: Строка с CSV-данными, где каждая строка содержит пару "родитель, потомок".
+    :return: Строка с результатами подсчета метрик в формате CSV.
+    """
+    child_map = defaultdict(list)  # Словарь для хранения дочерних узлов
+    parent_map = defaultdict(list)  # Словарь для хранения родительских узлов
 
-    # отношение r1
-    for i in parent_child_dict.keys():  
-          relation_table[i-1][0] += len(parent_child_dict[i])
+    csv_reader = csv.reader(input_data.splitlines(), delimiter=',')
 
-    # отношение r2
-    for i in parent_child_dict.values(): 
-          for j in i: 
-                    relation_table[j-1][1] += 1  
+    for line in csv_reader:
+        if not line:
+            continue
+        # Извлекаем родителя и потомка
+        parent, child = line
+        child_map[parent].append(child)
+        parent_map[child].append(parent)
 
-    # отношение r3
-    # добавляем подчинённых всех подчинненых управляющих, которые были найденны на r1 отношении
-    for i in parent_child_dict.keys(): 
-          queue = parent_child_dict[i].copy()
-          for j in queue:
-               if relation_table[j-1][0] != 0:
-                    relation_table[i-1][2] += relation_table[j-1][0]        
-                    queue.extend(parent_child_dict[j]) 
+        # Убедимся, что каждый узел присутствует в обеих структурах
+        if parent not in parent_map:
+            parent_map[parent] = []
+        if child not in child_map:
+            child_map[child] = []
 
-    # отношение r4
-    for i in parent_child_dict.values(): 
-          for j in i:
-               queue = [j]
-               for k in queue:
-                    parent = get_key_by_value(parent_child_dict, k)
-                    if relation_table[parent - 1][1] != 0:          
-                              relation_table[k-1][3] += relation_table[parent-1][1]        
-                              queue.append(parent) 
+    # Находим корневой узел (у которого нет родителей)
+    root = next((node for node in parent_map if not parent_map[node]), None)
 
-    # отношение r5
-    root = set(parent_child_dict.keys()) - set(list(chain.from_iterable(parent_child_dict.values())))  #ищем корень
-    root = list(root)
-    root = root[0]
+    # Определяем листовые узлы (без потомков)
+    leaf_nodes = [node for node in child_map if not child_map[node]]
 
-    #находим на каких уровнях находтся узлы      
-    graph_level = {}
-    queue = [[root, 0]]
-    for i in queue:
-         node = i[0]
-         level = i[1]
-         if level not in graph_level.keys():
-              graph_level[level] = [node]
-         else:
-              graph_level[level] = graph_level[level] + [node]      
-         if node in parent_child_dict.keys():
-              for j in parent_child_dict[node]:
-                    queue.append([j, level+1])
+    # Инициализация результатов для каждого узла
+    metrics = {node: {
+        'descendants': set(child_map[node]),
+        'ancestors': set(parent_map[node]),
+        'all_descendants': set(),
+        'all_ancestors': set(),
+        'sibling_descendants': set()
+    } for node in parent_map}
 
-    # смотрим сколько на уровне узлов
-    for i in graph_level.keys():
-         if len(graph_level[i]) > 1:
-              for j in graph_level[i]:
-                   relation_table[j-1][4] += len(graph_level[i]) - 1      
+    # Прямой проход для вычисления all_ancestors и sibling_descendants
+    traversal_stack = [root]
+    while traversal_stack:
+        current_node = traversal_stack.pop()
+        for child in child_map[current_node]:
+            metrics[child]['all_ancestors'].update(
+                metrics[current_node]['ancestors'])
+            metrics[child]['all_ancestors'].add(current_node)
+            metrics[child]['sibling_descendants'].update(
+                metrics[current_node]['descendants'] - {child})
+            traversal_stack.append(child)
 
-    print(graph_level)                        
-    return relation_table     
+    # Обратный проход для вычисления all_descendants
+    reverse_stack = leaf_nodes[:]
+    while reverse_stack:
+        current_node = reverse_stack.pop()
+        for parent in parent_map[current_node]:
+            metrics[parent]['all_descendants'].update(
+                metrics[current_node]['descendants'])
+            metrics[parent]['all_descendants'].add(current_node)
+            if parent not in reverse_stack:
+                reverse_stack.append(parent)
 
-# Функция для поиска ключа по значению
-def get_key_by_value(d, value):
-    for key, val in d.items():
-        if value in val:
-            return key
-    return None  # Если значение не найдено 
+    # Форматирование результатов в CSV
+    output_fields = ('descendants', 'ancestors', 'all_descendants',
+                     'all_ancestors', 'sibling_descendants')
+    csv_output = '\n'.join(
+        [
+            ','.join([str(len(metrics[node][field]))
+                     for field in output_fields])
+            for node in sorted(metrics)
+        ]
+    ) + '\n'
 
-def main(input_string:str) -> str:
-    result, node_counts = parse_parent_child_string(input_string)
-    print("Результат:", result)
-    relation_table = count_relationships(result, node_counts)
-    print(relation_table)
-    # Преобразуем в строку CSV
-    csv_output = '\n'.join(','.join(map(str, row)) for row in relation_table)
+    return csv_output
 
-    # Выводим результат в консоль
-    print(csv_output)
 
-if __name__ == "__main__":
-    # Проверяем, передан ли параметр
-    if len(sys.argv) > 1:
-        input_string = sys.argv[1]
-        main(input_string)
-    else:
-        print("Пожалуйста, передайте строку в качестве первого параметра.")
+def main():
+    input = "1,2\n1,3\n3,4\n3,5\n"
+    print(process_hierarchy(input))
+
+
+if __name__ == '__main__':
+    main()
